@@ -1,0 +1,15 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "check-public-rds-stack"
+s3_bucket = ""  # Will be created automatically
+s3_prefix = "check-public-rds-stack"
+region = "eu-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+resolve_s3 = true
+parameter_overrides = "Environment=\"dev\" Schedule=\"cron(0 9 ? * MON *)\" ScanAllRegions=\"true\" PublicOnly=\"true\" MaxWorkers=\"10\""

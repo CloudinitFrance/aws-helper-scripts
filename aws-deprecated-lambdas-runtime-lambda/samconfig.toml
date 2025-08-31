@@ -1,0 +1,15 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "aws-deprecated-lambdas-runtime-stack"
+s3_bucket = ""  # Will be created automatically
+s3_prefix = "aws-deprecated-lambdas-runtime-stack"
+region = "eu-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+resolve_s3 = true
+parameter_overrides = "Environment=\"dev\" Schedule=\"cron(0 9 ? * MON *)\" MonthsAhead=\"6\" ScanAllRegions=\"true\" MaxWorkers=\"10\""

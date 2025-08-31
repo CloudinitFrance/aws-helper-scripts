@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Cleanup EBS Snapshots
+  
+  Serverless version of cleanup-snapshots for automated EBS snapshot cleanup
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  Schedule:
+    Type: String
+    Default: "cron(0 3 ? * SUN *)"
+    Description: CloudWatch Events schedule expression (default weekly on Sunday at 3 AM)
+
+  DaysOld:
+    Type: Number
+    Default: 30
+    MinValue: 7
+    MaxValue: 365
+    Description: Delete snapshots older than N days
+
+  ScanAllRegions:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Scan all AWS regions (default current region only)
+
+  DryRun:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Dry run mode - don't actually delete snapshots
+
+  RequireUntagged:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Only delete untagged snapshots
+
+  MaxWorkers:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 20
+    Description: Maximum number of parallel workers for region scanning
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 1024
+    Runtime: python3.13
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        DAYS_OLD: !Ref DaysOld
+        SCAN_ALL_REGIONS: !Ref ScanAllRegions
+        DRY_RUN: !Ref DryRun
+        REQUIRE_UNTAGGED: !Ref RequireUntagged
+        MAX_WORKERS: !Ref MaxWorkers
+
+Resources:
+  CleanupSnapshotsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: cleanup-snapshots-lambda
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Description: !Sub "${Environment} - Cleanup EBS Snapshots"
+      Events:
+        ScheduledTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Description: "Scheduled execution of EBS snapshot cleanup"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeSnapshots
+                - ec2:DescribeImages
+                - ec2:DescribeLaunchTemplates
+                - ec2:DescribeLaunchTemplateVersions
+                - ec2:DeleteSnapshot
+                - sts:GetCallerIdentity
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+Outputs:
+  CleanupSnapshotsFunction:
+    Description: "Cleanup EBS Snapshots Lambda Function ARN"
+    Value: !GetAtt CleanupSnapshotsFunction.Arn
+  CleanupSnapshotsFunctionRole:
+    Description: "Implicit IAM Role created for Cleanup Snapshots function"
+    Value: !GetAtt CleanupSnapshotsFunctionRole.Arn

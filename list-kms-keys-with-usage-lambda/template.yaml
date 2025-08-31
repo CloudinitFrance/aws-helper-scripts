@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  List KMS Keys with Usage Inventory
+  
+  Serverless version of list-kms-keys-with-usage for automated KMS key auditing
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  Schedule:
+    Type: String
+    Default: "cron(0 8 1 * ? *)"
+    Description: CloudWatch Events schedule expression (default monthly on 1st at 8 AM)
+
+  ScanAllRegions:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Scan all AWS regions (default current region only)
+
+  MaxWorkers:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 20
+    Description: Maximum number of parallel workers for region scanning
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 1024
+    Runtime: python3.13
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        SCAN_ALL_REGIONS: !Ref ScanAllRegions
+        MAX_WORKERS: !Ref MaxWorkers
+        SNS_TOPIC_ARN: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:SecurityFindings"
+
+Resources:
+  ListKMSKeysFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: list-kms-keys-with-usage-lambda
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Description: !Sub "${Environment} - List KMS Keys with Usage Inventory"
+      Events:
+        ScheduledTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Description: "Scheduled execution of KMS keys usage audit"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - kms:ListKeys
+                - kms:DescribeKey
+                - kms:GetKeyLastUsedDate
+                - kms:GetKeyRotationStatus
+                - kms:ListAliases
+                - kms:ListGrants
+                - kms:ListKeyPolicies
+                - kms:GetKeyPolicy
+                - kms:ListResourceTags
+                - ec2:DescribeRegions
+                - sns:Publish
+                - sts:GetCallerIdentity
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+Outputs:
+  ListKMSKeysFunction:
+    Description: "List KMS Keys with Usage Lambda Function ARN"
+    Value: !GetAtt ListKMSKeysFunction.Arn
+  ListKMSKeysFunctionRole:
+    Description: "Implicit IAM Role created for List KMS Keys function"
+    Value: !GetAtt ListKMSKeysFunctionRole.Arn
+  SecurityFindingsTopic:
+    Description: "Security Findings SNS Topic ARN"
+    Value: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:SecurityFindings"

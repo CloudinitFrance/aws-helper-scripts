@@ -1,0 +1,15 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "stop-idle-ec2-stack"
+s3_bucket = ""  # Will be created automatically
+s3_prefix = "stop-idle-ec2-stack"
+region = "eu-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+resolve_s3 = true
+parameter_overrides = "Environment=\"dev\" Schedule=\"cron(0 20 * * ? *)\" ScanAllRegions=\"true\" MaxWorkers=\"10\" DryRun=\"true\" CpuThreshold=\"5\" MonitoringHours=\"24\""

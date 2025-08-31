@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  IAM Users MFA Compliance Checker
+  
+  Serverless version of check-iam-users-no-mfa for automated IAM security auditing
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  Schedule:
+    Type: String
+    Default: "cron(0 9 ? * MON *)"
+    Description: CloudWatch Events schedule expression (default weekly on Monday)
+
+  IncludeInactive:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Include users with no recent activity
+
+  ViolationsOnly:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Only report users with MFA violations
+
+Globals:
+  Function:
+    Timeout: 600
+    MemorySize: 512
+    Runtime: python3.13
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        INCLUDE_INACTIVE: !Ref IncludeInactive
+        VIOLATIONS_ONLY: !Ref ViolationsOnly
+        SNS_TOPIC_ARN: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:SecurityFindings"
+
+Resources:
+  CheckIamUsersNoMfaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: check-iam-users-no-mfa-lambda
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Description: !Sub "${Environment} - IAM Users MFA Compliance Checker"
+      Events:
+        ScheduledTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Description: "Scheduled execution of IAM MFA compliance checker"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - iam:ListUsers
+                - iam:GetUser
+                - iam:GetLoginProfile
+                - iam:ListMFADevices
+                - iam:ListAccessKeys
+                - iam:GetAccessKeyLastUsed
+                - sns:Publish
+                - sts:GetCallerIdentity
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+Outputs:
+  CheckIamUsersNoMfaFunction:
+    Description: "IAM Users MFA Compliance Checker Lambda Function ARN"
+    Value: !GetAtt CheckIamUsersNoMfaFunction.Arn
+  CheckIamUsersNoMfaFunctionRole:
+    Description: "Implicit IAM Role created for IAM MFA Compliance Checker function"
+    Value: !GetAtt CheckIamUsersNoMfaFunctionRole.Arn
+  SecurityFindingsTopic:
+    Description: "Security Findings SNS Topic ARN"
+    Value: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:SecurityFindings"

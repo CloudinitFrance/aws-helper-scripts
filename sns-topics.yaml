@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SNS Topics for Lambda Notifications'
+
+Resources:
+  SecurityFindingsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: SecurityFindings
+      DisplayName: "Security Findings Alerts"
+
+  FinOpsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: FinOps
+      DisplayName: "FinOps Cost Management Alerts"
+
+Outputs:
+  SecurityFindingsTopicArn:
+    Description: "Security Findings SNS Topic ARN"
+    Value: !Ref SecurityFindingsTopic
+    Export:
+      Name: SecurityFindingsTopicArn
+
+  FinOpsTopicArn:
+    Description: "FinOps SNS Topic ARN"  
+    Value: !Ref FinOpsTopic
+    Export:
+      Name: FinOpsTopicArn

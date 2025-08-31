@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  List Route53 Zones and Records Inventory
+  
+  Serverless version of list-route53-zones-and-records for automated DNS auditing
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  Schedule:
+    Type: String
+    Default: "cron(0 6 1 * ? *)"
+    Description: CloudWatch Events schedule expression (default monthly on 1st at 6 AM)
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 512
+    Runtime: python3.13
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        SNS_TOPIC_ARN: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:SecurityFindings"
+
+Resources:
+  ListRoute53Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: list-route53-zones-and-records-lambda
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Description: !Sub "${Environment} - List Route53 Zones and Records Inventory"
+      Events:
+        ScheduledTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Description: "Scheduled execution of Route53 DNS inventory"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - route53:ListHostedZones
+                - route53:ListResourceRecordSets
+                - route53:GetHostedZone
+                - route53:ListTagsForResource
+                - route53:GetHealthCheck
+                - route53:ListHealthChecks
+                - sns:Publish
+                - sts:GetCallerIdentity
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+Outputs:
+  ListRoute53Function:
+    Description: "List Route53 Zones and Records Lambda Function ARN"
+    Value: !GetAtt ListRoute53Function.Arn
+  ListRoute53FunctionRole:
+    Description: "Implicit IAM Role created for List Route53 function"
+    Value: !GetAtt ListRoute53FunctionRole.Arn
+  SecurityFindingsTopic:
+    Description: "Security Findings SNS Topic ARN"
+    Value: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:SecurityFindings"

@@ -1,0 +1,15 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "check-iam-users-no-mfa-stack"
+s3_bucket = ""  # Will be created automatically
+s3_prefix = "check-iam-users-no-mfa-stack"
+region = "eu-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+resolve_s3 = true
+parameter_overrides = "Environment=\"dev\" Schedule=\"cron(0 9 ? * MON *)\" IncludeInactive=\"true\" ViolationsOnly=\"false\""

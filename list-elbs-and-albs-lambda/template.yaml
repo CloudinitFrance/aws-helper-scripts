@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  List ELBs and ALBs Inventory
+  
+  Serverless version of list-elbs-and-albs for automated load balancer inventory
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  Schedule:
+    Type: String
+    Default: "cron(0 6 1 * ? *)"
+    Description: CloudWatch Events schedule expression (default monthly on 1st at 6 AM)
+
+  ScanAllRegions:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Scan all AWS regions (default current region only)
+
+  MaxWorkers:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 20
+    Description: Maximum number of parallel workers for region scanning
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 1024
+    Runtime: python3.13
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        SCAN_ALL_REGIONS: !Ref ScanAllRegions
+        MAX_WORKERS: !Ref MaxWorkers
+
+Resources:
+  ListELBsALBsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: list-elbs-and-albs-lambda
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Description: !Sub "${Environment} - List ELBs and ALBs Inventory"
+      Events:
+        ScheduledTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Description: "Scheduled execution of ELB/ALB inventory"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - elasticloadbalancing:DescribeLoadBalancers
+                - elasticloadbalancing:DescribeListeners
+                - elasticloadbalancing:DescribeTargetGroups
+                - elasticloadbalancing:DescribeRules
+                - elasticloadbalancing:DescribeTargetHealth
+                - ec2:DescribeRegions
+                - sts:GetCallerIdentity
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+Outputs:
+  ListELBsALBsFunction:
+    Description: "List ELBs and ALBs Inventory Lambda Function ARN"
+    Value: !GetAtt ListELBsALBsFunction.Arn
+  ListELBsALBsFunctionRole:
+    Description: "Implicit IAM Role created for ELB/ALB Inventory function"
+    Value: !GetAtt ListELBsALBsFunctionRole.Arn
