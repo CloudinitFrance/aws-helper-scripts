@@ -387,8 +387,13 @@ def print_summary_report(buckets: List[Dict]):
         print("PUBLIC BUCKETS (IMMEDIATE ATTENTION REQUIRED)")
         print(f"{'='*80}")
         
-        print(f"\n{'Bucket Name':30} {'Region':15} {'Risk':8} {'Size (MB)':12} {'Reasons'}")
-        print("-" * 90)
+        # Calculate max bucket name length
+        max_bucket_name_len = max(len(b['BucketName']) for b in public_buckets) if public_buckets else 30
+        max_bucket_name_len = max(max_bucket_name_len, 30)  # Minimum 30 chars
+        
+        # Print header with proper spacing
+        print(f"\n{'Bucket Name':<{max_bucket_name_len}} {'Region':<15} {'Risk':<12} {'Size (MB)':<12} Reasons")
+        print("-" * (max_bucket_name_len + 15 + 12 + 12 + 20))
         
         # Sort by risk level
         sorted_buckets = sorted(public_buckets, 
@@ -396,19 +401,19 @@ def print_summary_report(buckets: List[Dict]):
         
         for bucket in sorted_buckets:
             risk_indicator = {
-                'Critical': '🔴',
-                'High': '🟡',
-                'Medium': '🟠',
-                'Low': '🟢'
-            }.get(bucket['RiskLevel'], '❓')
+                'Critical': '🔴 Critical',
+                'High': '🟡 High',
+                'Medium': '🟠 Medium',
+                'Low': '🟢 Low'
+            }.get(bucket['RiskLevel'], '❓ Unknown')
             
             size_mb = bucket.get('TotalSizeMB', 0)
             reasons = ', '.join(bucket.get('PublicReasons', []))
             
-            print(f"{bucket['BucketName']:30} "
-                  f"{bucket.get('Region', 'Unknown'):15} "
-                  f"{risk_indicator} {bucket['RiskLevel']:6} "
-                  f"{size_mb:10.1f} "
+            print(f"{bucket['BucketName']:<{max_bucket_name_len}} "
+                  f"{bucket.get('Region', 'Unknown'):<15} "
+                  f"{risk_indicator:<12} "
+                  f"{size_mb:<12.1f} "
                   f"{reasons}")
     
     # Show security recommendations
